@@ -1,0 +1,113 @@
+#include "encode.h"
+Status copy_bmp_header(FILE * fptr_src_image, FILE *fptr_dest_image)
+{
+	char ch1;
+	rewind(fptr_src_image);	
+	printf("file offset is at fp2 --> %ld\n\n", ftell(fptr_dest_image));
+	printf("file offset is at fp --> %ld\n\n", ftell(fptr_src_image));
+	while(fread(&ch1, sizeof(ch1),1, fptr_src_image))
+	{
+		fwrite(&ch1, sizeof(ch1),1, fptr_dest_image);
+		if(ftell(fptr_dest_image)==54)
+		{
+			break;
+		}
+	}
+	return e_success;
+}
+Status encode_secret_file_size(unsigned int file_size, EncodeInfo *encInfo)
+{
+
+	unsigned int hw=file_size;
+	printf("%d",file_size);
+	int i;
+	char ch;
+	for(i=31;i>=0;i--)
+	{
+
+		ch=(char)(hw>>i&1);
+		fwrite(&ch,sizeof(char),1,encInfo->fptr_stego_image);
+	}
+	return e_success;
+}
+Status encode_magic_string(const char *magic_string, EncodeInfo *encInfo)
+{
+	unsigned char ch,ch1;
+	while( *magic_string)
+	{
+		ch1=*magic_string;
+
+		int i;
+		for(i=7;i>=0;i--)
+		{
+//			fread(&ch1, sizeof(char), 1,encInfo->fptr_src_image);
+			ch=(char)(ch1>>i&1);
+			fwrite(&ch,sizeof(char),1,encInfo->fptr_stego_image);
+		}
+		magic_string++;
+	}
+
+
+	return e_success;
+
+}
+Status encode_secret_file(EncodeInfo *encInfo)
+{
+	unsigned char ch,ch1;
+	unsigned int size1= encInfo->size_secret_file;
+
+
+//	rewind(encInfo->fptr_src_image);
+	while(fread(&ch1, sizeof(char), 1, encInfo->fptr_secret))
+	{
+		int i;
+		for(i=7;i>=0;i--)
+		{
+			ch=(char)(ch1>>i&1);
+			fwrite(&ch,sizeof(char),1,encInfo->fptr_stego_image);
+		}
+		if(size1<1)
+			break;
+		size1--;
+	}
+	return e_success;
+}
+Status copy_remaining_img_data(FILE *fptr_src, FILE *fptr_dest)
+{
+	unsigned char ch;
+	
+	fseek(fptr_src, ftell(fptr_dest), SEEK_SET);
+	printf("file offset of is at --> %ld END\n\n", ftell(fptr_dest));
+	int i;
+	for(i=ftell(fptr_src);!feof(fptr_src);i++)
+	{
+		fread(&ch,sizeof(char),1,fptr_src);
+		fwrite(&ch,sizeof(char),1,fptr_dest);
+	}
+	return e_success;
+}
+Status do_encoding(EncodeInfo *encInfo)
+{
+	if ( open_files(encInfo) == e_success )
+	{
+		if( copy_bmp_header(encInfo->fptr_src_image,encInfo->fptr_stego_image) == e_success )
+		{
+			if( encode_magic_string(MAGIC_STRING,encInfo) == e_success)
+			{
+				if( encode_secret_file_size(encInfo->size_secret_file,encInfo) == e_success )
+				{
+					if( encode_secret_file(encInfo) == e_success )
+					{
+						if( copy_remaining_img_data(encInfo->fptr_src_image,encInfo->fptr_stego_image) == e_success )
+						{
+							fcloseall();
+							return e_success;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
