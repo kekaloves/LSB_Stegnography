@@ -1,4 +1,5 @@
 #include "decode.h"//user define header file
+#include <stdio.h>
 Status decode_magic_string(EncodeInfo *decInfo,char *key)//for decoded magic string
 {
 	fseek(decInfo->fptr_stego_image,54,0);//set stego image pointer offset to 54bytes
